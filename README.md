@@ -7,7 +7,7 @@
 TVBox 壳子「配置地址」处填：
 
 ```
-https://gh-proxy.com/raw.githubusercontent.com/qiuzhu682003/tvbox/main/tvbox.json
+https://gh-proxy.com/raw.githubusercontent.com/longge83/tvbox1023/main/tvbox.json
 ```
 
 （`gh-proxy.com` 为 GitHub raw 加速；若失效可换 `ghfast.top` 同路径。）
@@ -16,10 +16,6 @@ https://gh-proxy.com/raw.githubusercontent.com/qiuzhu682003/tvbox/main/tvbox.jso
 
 | 上游源 | 说明 |
 |---|---|
-| `https://tv.cc0cd.cc.cd` | tvyuan，1448 站自动测速排序，每小时更新 |
-| `http://肥猫.net/` | 40 精选站 + jar + 直播 |
-| `qist/tvbox fty.json` | 49 站（饭太硬镜像，走 gh-proxy） |
-| `qist/tvbox jsm.json` | 153 站（OK影视适用，走 gh-proxy） |
 
 聚合（去重 / 测速标注 / Spider JAR 收编）由 [tvbox-source-aggregator](https://gitee.com/tengxiaobao/tvbox-source-aggregator) v2.1.1 完成，源码 vendor 在 `aggregator/`。
 
@@ -45,6 +41,6 @@ git add tvbox.json && git commit -m refresh && git push
 
 直播源不依赖本配置，电视端单独填（已实测可用）：
 
-- 点播+直播二合一：上方 tvbox.json（内含聚合的 1915 个直播分组）
+- 点播+直播二合一：上方 tvbox.json（内含聚合的直播分组）
 - 纯直播推荐：`https://gh-proxy.com/raw.githubusercontent.com/vbskycn/iptv/refs/heads/master/tv/iptv4.m3u`（每 6h 更新）
 - EPG：`https://gh-proxy.com/raw.githubusercontent.com/CCSH/IPTV/refs/heads/main/e.xml`
