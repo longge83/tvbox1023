@@ -30,25 +30,30 @@ cat > .env <<EOF
 ADMIN_TOKEN=<设一个强口令，并告知用户保存>
 PORT=5678
 BASE_URL=http://${LAN_IP}:5678
-CRON_SCHEDULE=0 21 * * *
+CRON_SCHEDULE=0 5 * * *
 DATA_DIR=./data
 EOF
 ```
 
-要点：`ADMIN_TOKEN` 自己生成一个强随机串（如 `openssl rand -hex 16`），**把明文告知用户**让其保存；`BASE_URL` 必须是 iMac 的**内网 IP**（电视要能访问）；`CRON_SCHEDULE` 为 UTC 时区，`0 21 * * *` = 每天北京时间 05:00 自动重新聚合。
+要点：`ADMIN_TOKEN` 自己生成一个强随机串（如 `openssl rand -hex 16`），**把明文告知用户**让其保存；`BASE_URL` 必须是 iMac 的**内网 IP**（电视要能访问）。
+
+`CRON_SCHEDULE` **按 iMac 本地时间解释，不是 UTC**——`src/node-entry.ts` 调 `cron.schedule(expr, cb)` 没传 timezone 选项，node-cron 3.0.3 在无 timezone 时用进程本地时区（Asia/Shanghai）。因此写 `0 5 * * *` 即每天北京 05:00；**不要照 UTC 思维写 `0 21 * * *`（那会变成北京 21:00 跑）**。
 
 ### 3. 启动（二选一）
 
 **方案 A（推荐，最轻）：Node + launchd 常驻**
 
 ```bash
-# Node ≥ 18：没有就 brew install node@20，或直接双击 start.command（自带检测安装）
+# Node 版本坑：better-sqlite3 的 prebuild 只覆盖 ABI 108/115/127/131（Node 18/20/22/23）。
+# 系统 Node 若为 24+（如 26），npm ci 会因无预编译包 + V8 API 变更源码编译失败。
+# 用 brew 装 node@22（keg-only，不抢系统 node）并以其运行：
+#   brew install node@22 && export PATH="$(brew --prefix node@22)/bin:$PATH"
 cd ~/tvbox/aggregator
 npm ci && npm run build:node
 node dist/server.js &        # 前台试跑，看到 storage 初始化即成功；Ctrl+C 后做自启
 ```
 
-然后写 launchd（`~/Library/LaunchAgents/cc.qiuzhu.tvbox.plist`），要点：`RunAtLoad` + `KeepAlive`、`WorkingDirectory` 指向 `~/tvbox/aggregator`、`ProgramArguments` 为 `/bin/bash -lc "node dist/server.js"`（或 node 绝对路径）、StandardOut/Err 落到 `~/tvbox/aggregator/server.log`。`launchctl load` 加载。
+然后写 launchd（`~/Library/LaunchAgents/cc.qiuzhu.tvbox.plist`），要点：`RunAtLoad` + `KeepAlive`、`WorkingDirectory` 指向 `~/tvbox/aggregator`、`ProgramArguments` 里的 `&&` 等 XML 特殊字符要转义为 `&amp;`（用 `plutil -lint` 校验），或干脆指向一个独立的 start.sh；StandardOut/Err 落到 `~/tvbox/aggregator/server.log`。`launchctl load` 加载（部分沙箱网关会拦 `bootstrap`，`load`/`unload` 等效）。
 
 **方案 B：Docker**（若 iMac 已装 Docker/OrbStack）
 
