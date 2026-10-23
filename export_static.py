@@ -7,17 +7,22 @@
 图片代理 pic 无静态等价物，直接删除。
 """
 import json
+import os
 import re
 import sqlite3
 import sys
 from pathlib import Path
 
-AGG_DIR = Path(r"C:\Users\qiuzhu\ZCodeProject\tvbox-source-aggregator")
-SRC = AGG_DIR / "merged-config.json"
-DB = AGG_DIR / "data" / "tvbox.db"
-OUT = Path(__file__).parent / "tvbox.json"
+AGG_DIR = Path(os.environ.get("AGG_DIR", r"C:\Users\qiuzhu\ZCodeProject\tvbox-source-aggregator"))
+SRC = Path(os.environ.get("SRC_JSON", AGG_DIR / "merged-config.json"))
+DB = Path(os.environ.get("AGG_DB", AGG_DIR / "data" / "tvbox.db"))
+OUT = Path(os.environ.get("OUT_JSON", Path(__file__).parent / "tvbox.json"))
 
-LOCAL_HOSTS = ("192.168.4.100:5678", "127.0.0.1:5678", "localhost:5678")
+# 聚合器把 JAR 收编为 "<base>/jar/<key>" 代理地址；key 为 16 位 urlToKey 或 32 位 md5。
+# 静态化时按映射还原，host 部分不限（本机导出为局域网 IP，CI 里为 127.0.0.1）。
+JAR_PROXY_PATTERN = re.compile(
+    r"https?://(?:localhost|127\.0\.0\.1|[0-9]{1,3}(?:\.[0-9]{1,3}){3})(?::\d+)?/jar/([0-9a-f]{32}|[0-9a-f]{16})"
+)
 
 
 def load_jar_map() -> dict:
@@ -47,9 +52,7 @@ def main() -> int:
         replaced += 1
         return origin
 
-    pattern = re.compile(
-        r"https?://(?:" + "|".join(re.escape(h) for h in LOCAL_HOSTS) + r")/jar/([0-9a-f]+)"
-    )
+    pattern = JAR_PROXY_PATTERN
     raw = pattern.sub(sub, raw)
 
     # 聚合后未再 refresh 时可能残留占位符形态
@@ -60,7 +63,8 @@ def main() -> int:
 
     residual = [
         u for u in re.findall(r"https?://[^\"\\s]+", raw)
-        if any(h in u for h in LOCAL_HOSTS) and "127.0.0.1:9978" not in u
+        if JAR_PROXY_PATTERN.search(u) or "localhost" in u
+        or ("127.0.0.1" in u and "127.0.0.1:9978" not in u)
     ]
 
     OUT.write_text(json.dumps(cfg, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

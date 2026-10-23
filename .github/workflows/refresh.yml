@@ -1,0 +1,85 @@
+name: refresh-tvbox-config
+
+on:
+  schedule:
+    - cron: "0 21 * * *" # UTC 21:00 = 北京时间 05:00，每天一次
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-tvbox-config
+  cancel-in-progress: false
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: aggregator/package-lock.json
+
+      - name: Build aggregator
+        working-directory: aggregator
+        run: |
+          npm ci
+          npm run build:node
+
+      - name: Start aggregator service
+        working-directory: aggregator
+        env:
+          PORT: "5678"
+          ADMIN_TOKEN: tvbox-ci-${{ github.run_id }}
+          DATA_DIR: ./data
+        run: |
+          mkdir -p data
+          nohup node dist/server.js > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:5678/version > /dev/null; then
+              echo "service ready"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:5678/version
+
+      - name: Add sources and trigger aggregation
+        env:
+          TOKEN: tvbox-ci-${{ github.run_id }}
+        run: |
+          add() {
+            curl -sf -X POST http://127.0.0.1:5678/admin/sources \
+              -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+              -d "{\"name\":\"$1\",\"url\":\"$2\"}" || echo "source $1 may already exist"
+          }
+          add tvyuan    "https://tv.cc0cd.cc.cd"
+          add feimao    "http://xn--z7x900a.net/"
+          add qist-fty  "https://gh-proxy.com/raw.githubusercontent.com/qist/tvbox/master/fty.json"
+          add qist-jsm  "https://gh-proxy.com/raw.githubusercontent.com/qist/tvbox/master/jsm.json"
+          echo "refreshing (may take several minutes)..."
+          curl -sf --max-time 900 -X POST http://127.0.0.1:5678/refresh \
+            -H "Authorization: Bearer $TOKEN"
+          curl -sf http://127.0.0.1:5678/ -o merged-config.json
+          python3 -c "import json; d=json.load(open('merged-config.json')); assert len(d.get('sites',[]))>100, 'too few sites'; print('sites:', len(d['sites']))"
+
+      - name: Export static config
+        run: |
+          python3 export_static.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tvbox.json
+          if git diff --cached --quiet; then
+            echo "no changes to tvbox.json"
+          else
+            git commit -m "refresh tvbox.json ($(date -u +%FT%TZ))"
+            git push
+          fi
