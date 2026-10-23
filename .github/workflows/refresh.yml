@@ -58,10 +58,11 @@ jobs:
               -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
               -d "{\"name\":\"$1\",\"url\":\"$2\"}" || echo "source $1 may already exist"
           }
-          add tvyuan    "https://tv.cc0cd.cc.cd"
-          add feimao    "http://xn--z7x900a.net/"
-          add qist-fty  "https://gh-proxy.com/raw.githubusercontent.com/qist/tvbox/master/fty.json"
-          add qist-jsm  "https://gh-proxy.com/raw.githubusercontent.com/qist/tvbox/master/jsm.json"
+          add clun    "https://clun.top/box.json"
+          add feimao    "http://肥猫.net/"
+          add 王二小  "https://9280.kstore.vip/newwex.json
+"
+          add youhun  "https://www.iyouhun.com/tv/oktv"
           echo "refreshing (may take several minutes)..."
           curl -sf --max-time 900 -X POST http://127.0.0.1:5678/refresh \
             -H "Authorization: Bearer $TOKEN"
