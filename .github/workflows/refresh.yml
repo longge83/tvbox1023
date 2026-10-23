@@ -69,6 +69,11 @@ jobs:
           python3 -c "import json; d=json.load(open('merged-config.json')); assert len(d.get('sites',[]))>100, 'too few sites'; print('sites:', len(d['sites']))"
 
       - name: Export static config
+        env:
+          AGG_DIR: ${{ github.workspace }}/aggregator
+          SRC_JSON: ${{ github.workspace }}/merged-config.json
+          AGG_DB: ${{ github.workspace }}/aggregator/data/tvbox.db
+          OUT_JSON: ${{ github.workspace }}/tvbox.json
         run: |
           python3 export_static.py
 
