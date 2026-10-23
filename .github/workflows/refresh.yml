@@ -60,8 +60,7 @@ jobs:
           }
           add clun    "https://clun.top/box.json"
           add feimao    "http://肥猫.net/"
-          add 王二小  "https://9280.kstore.vip/newwex.json
-"
+          add wangerxiao  "https://9280.kstore.vip/newwex.json"
           add youhun  "https://www.iyouhun.com/tv/oktv"
           echo "refreshing (may take several minutes)..."
           curl -sf --max-time 900 -X POST http://127.0.0.1:5678/refresh \
